@@ -1,0 +1,143 @@
+---
+title: "Assignment 1"
+author: "Hilary M"
+date: "2022-12-06"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(gt)
+library(knitr)
+library(timeDate)
+```
+
+<h2><p style="text-align: center; color: blue">Exploration of data from a Personal Activity Monitoring Device</p></h2>
+
+
+This is an exploration of data from a personal activity monitoring device. First we will read in the interval data:
+
+```{r}
+activity <- read.csv("activity.csv")
+```
+
+### What is the total number of steps taken per day?
+
+We will now look at the total number of steps taken each day. We will show this with a histogram.
+
+```{r, warning=FALSE}
+daily_activity <- activity %>%
+    group_by(date) %>%
+    summarise(total_steps = sum(steps)) %>%
+    mutate(date = as.Date(date))
+
+ggplot(daily_activity, aes(x=date, y=total_steps)) +
+    geom_bar(stat="identity")
+```
+
+Let's take a look at the mean and median steps taken each day:
+
+```{r}
+stats <- daily_activity %>%
+    summarise(mean = mean(total_steps, na.rm = TRUE),
+              median = median(total_steps, na.rm = TRUE))
+
+stats %>%
+    gt() %>%
+    tab_header(
+        title = html("Steps per Day "),
+    ) %>%
+    cols_label(
+        "mean" = "Mean",
+        "median" = "Median",
+    )
+    
+
+```
+### What is the average daily pattern?
+We plot the average steps taken per time interval over the 61 days of data. We then calculate which interval has the maximum average value. We have plotted this value on our time series plot and we can see that the maximum average value per 5-minute interval is 206.17 at time the time interval identified as 835.
+
+```{r, warning=FALSE}
+daily_pattern <- activity %>%
+    group_by(interval) %>%
+    summarise(avg_steps = mean(steps,na.rm=TRUE))
+
+max_daily <- daily_pattern %>%
+    filter(avg_steps == max(avg_steps))
+
+ggplot(daily_pattern, aes(x=interval, y=avg_steps)) +
+    geom_line() +
+    geom_segment(aes(x = max_daily$interval, y = 0, xend = max_daily$interval, 
+                     yend = max_daily$avg_steps),linetype="dashed", color = "red") +
+    geom_text(aes(label=round(avg_steps,2)),data=max_daily, hjust=1.2, vjust=3) +
+    scale_x_continuous(breaks=c(0,500, max_daily$interval, 1000, 1500, 2000))
+
+```
+
+### Imputing missing values
+There are 2304 missing step count values in the data set. We will impute these values by taking the average of all the values at that same interval. There are some cases where there are no step counts on any day for a certain interval, we will impute those values with 0.
+
+```{r}
+num_missing <-length(activity[is.na(activity$steps),]$steps)
+daily_pattern_impute <- activity %>%
+    group_by(interval) %>%
+    mutate(steps = ifelse(is.na(steps),0,steps)) %>%
+    summarise(avg_steps = mean(steps))
+
+activity_impute <- activity
+for (i in 1:length(activity_impute$steps)){
+    if (is.na(activity_impute$steps[i])){
+        activity_impute$steps[i] = daily_pattern[daily_pattern$interval == activity_impute$interval[i],]$avg_steps
+    }
+}
+```
+
+We will now plot a histogram of the imputed data:
+
+```{r}
+daily_activity_new <- activity_impute %>%
+    group_by(date) %>%
+    summarise(total_steps = sum(steps)) %>%
+    mutate(date = as.Date(date))
+
+ggplot(daily_activity_new, aes(x=date, y=total_steps)) +
+    geom_bar(stat="identity")
+
+```
+
+We now look at the new mean and median calculated with the imputed data. We see that the mean hasn't changed, but the median has increased.
+
+```{r}
+
+stats <- daily_activity_new %>%
+    summarise(mean = mean(total_steps),
+              median = median(total_steps))
+stats %>%
+    gt() %>%
+    tab_header(
+        title = html("Steps per Day (Imputed Data) "),
+    ) %>%
+    cols_label(
+        "mean" = "Mean",
+        "median" = "Median",
+    )
+    
+```
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+We now will separate weekends and weekdays and plot the average steps taken by time interval for each. We can see that on weekends the average steps per interval is higher throughout the day, while on weekdays, the earlier intervals have a much higher average than the intervals throught the remainder of the day.
+
+```{r}
+activity_impute <- activity_impute %>%
+    mutate(day_type = ifelse(isWeekday(date) == TRUE, "Weekday", "Weekend"))
+
+daily_pattern <- activity_impute %>%
+    group_by(interval,day_type) %>%
+    summarise(avg_steps = mean(steps,na.rm=TRUE))
+
+ggplot(daily_pattern, aes(x=interval, y=avg_steps)) +
+    geom_line() +
+    facet_wrap(~ day_type, ncol=1)
