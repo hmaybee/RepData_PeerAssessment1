@@ -130,7 +130,7 @@ stats %>%
 
 We now will separate weekends and weekdays and plot the average steps taken by time interval for each. We can see that on weekends the average steps per interval is higher throughout the day, while on weekdays, the earlier intervals have a much higher average than the intervals throught the remainder of the day.
 
-```{r}
+```{r, message=FALSE}
 activity_impute <- activity_impute %>%
     mutate(day_type = ifelse(isWeekday(date) == TRUE, "Weekday", "Weekend"))
 
