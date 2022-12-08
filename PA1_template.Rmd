@@ -35,8 +35,8 @@ daily_activity <- activity %>%
     summarise(total_steps = sum(steps)) %>%
     mutate(date = as.Date(date))
 
-ggplot(daily_activity, aes(x=date, y=total_steps)) +
-    geom_bar(stat="identity")
+ggplot(daily_activity, aes(x=total_steps)) +
+    geom_histogram(bins = 10, fill="light blue", color = "black")
 ```
 
 Let's take a look at the mean and median steps taken each day:
@@ -106,8 +106,8 @@ daily_activity_new <- activity_impute %>%
     summarise(total_steps = sum(steps)) %>%
     mutate(date = as.Date(date))
 
-ggplot(daily_activity_new, aes(x=date, y=total_steps)) +
-    geom_bar(stat="identity")
+ggplot(daily_activity_new, aes(x=total_steps)) +
+    geom_histogram(bins = 10, fill="light blue", color = "black")
 
 ```
 
